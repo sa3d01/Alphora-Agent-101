@@ -1,0 +1,47 @@
+# =========================================
+# Java / Maven (agent-orchestrator)
+# =========================================
+agent-orchestrator/target/
+agent-orchestrator/.mvn/wrapper/maven-wrapper.jar
+agent-orchestrator/.mvn/wrapper/maven-wrapper.properties
+agent-orchestrator/*.log
+agent-orchestrator/*.iml
+
+# =========================================
+# IntelliJ IDEA
+# =========================================
+.idea/
+*.iws
+*.ipr
+*.iml
+
+# =========================================
+# Python (ai-service)
+# =========================================
+ai-service/__pycache__/
+ai-service/*.pyc
+ai-service/*.pyo
+ai-service/*.pyd
+
+# Virtual environments
+ai-service/venv/
+ai-service/.venv/
+
+# FastAPI / Uvicorn temp
+ai-service/*.pid
+ai-service/*.db
+ai-service/*.sqlite3
+
+# =========================================
+# OS / Mac
+# =========================================
+.DS_Store
+Thumbs.db
+
+# =========================================
+# Misc
+# =========================================
+*.log
+*.tmp
+*.swp
+*.swo
