@@ -22,7 +22,7 @@ flowchart LR
     Ingest --> Classifier[Intent Classification]
     Ingest --> Context[Client Context]
 
-    Classifier --> RAG[RAG KB (SOPs, configs)]
+    Classifier --> RAG[RAG KB -SOPs, configs]
     Context --> RAG
 
     RAG --> Planner[Action Planner]
