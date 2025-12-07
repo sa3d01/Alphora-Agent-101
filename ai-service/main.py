@@ -113,42 +113,50 @@ def classify_ticket_intent(subject: str, description: str) -> ClassificationResp
     classification_rules = [
         {
             "intent": Intent.PASSWORD_RESET,
-            "keywords": ["password", "reset", "forgot", "login", "cannot log in", "locked out", "credentials"],
+            "keywords": ["password", "reset", "forgot password", "cannot log in", "locked out", "credentials", "forgot credentials"],
+            "required_keywords": ["password", "reset", "credentials", "locked out"],  # At least one required
             "confidence_base": 0.9
         },
         {
             "intent": Intent.SYSTEM_RESTART,
-            "keywords": ["restart", "reboot", "slow", "frozen", "hung", "not responding", "performance"],
+            "keywords": ["restart", "reboot", "slow", "frozen", "hung", "not responding", "performance", "unresponsive"],
+            "required_keywords": ["restart", "reboot", "slow", "frozen", "hung", "performance"],
             "confidence_base": 0.85
         },
         {
             "intent": Intent.VPN_ACCESS,
-            "keywords": ["vpn", "remote access", "work from home", "connect remotely", "access network"],
+            "keywords": ["vpn", "remote access", "work from home", "connect remotely", "access network", "remote"],
+            "required_keywords": ["vpn", "remote"],
             "confidence_base": 0.9
         },
         {
             "intent": Intent.BACKUP_VERIFICATION,
             "keywords": ["backup", "restore", "data recovery", "backup failed"],
+            "required_keywords": ["backup", "restore"],
             "confidence_base": 0.85
         },
         {
             "intent": Intent.SOFTWARE_INSTALLATION,
             "keywords": ["install", "software", "application", "program", "need access to"],
+            "required_keywords": ["install", "software", "application", "program"],
             "confidence_base": 0.8
         },
         {
             "intent": Intent.PRINTER_ISSUE,
             "keywords": ["printer", "print", "printing", "cant print", "print job"],
+            "required_keywords": ["printer", "print"],
             "confidence_base": 0.85
         },
         {
             "intent": Intent.EMAIL_ISSUE,
             "keywords": ["email", "outlook", "cannot send", "cannot receive", "mailbox"],
+            "required_keywords": ["email", "outlook", "mailbox"],
             "confidence_base": 0.85
         },
         {
             "intent": Intent.NETWORK_CONNECTIVITY,
             "keywords": ["network", "internet", "wifi", "connection", "cannot connect", "offline"],
+            "required_keywords": ["network", "internet", "wifi", "offline"],
             "confidence_base": 0.8
         }
     ]
@@ -158,10 +166,18 @@ def classify_ticket_intent(subject: str, description: str) -> ClassificationResp
     best_confidence = 0.0
 
     for rule in classification_rules:
+        # Check if at least one required keyword is present
+        has_required = any(keyword in text for keyword in rule.get("required_keywords", []))
+
+        if not has_required:
+            continue
+
+        # Count total keyword matches
         matches = sum(1 for keyword in rule["keywords"] if keyword in text)
+
         if matches > 0:
             # Confidence increases with number of keyword matches
-            confidence = min(rule["confidence_base"] + (matches - 1) * 0.05, 0.98)
+            confidence = min(rule["confidence_base"] + (matches - 1) * 0.03, 0.98)
             if confidence > best_confidence:
                 best_confidence = confidence
                 best_match = rule["intent"]
@@ -211,7 +227,7 @@ async def root():
 async def classify_ticket(ticket: TicketRequest):
     """
     Classify incoming ticket intent with confidence scoring.
-    
+
     This endpoint determines what type of issue the ticket represents
     and whether it can be safely automated.
     """
@@ -223,7 +239,7 @@ async def classify_ticket(ticket: TicketRequest):
 async def retrieve_sops(ticket: TicketRequest, intent: Optional[Intent] = None):
     """
     Retrieve relevant SOPs using semantic search (RAG).
-    
+
     Uses vector similarity search to find the most relevant procedures
     for the given ticket.
     """
@@ -292,7 +308,7 @@ async def retrieve_sops(ticket: TicketRequest, intent: Optional[Intent] = None):
 async def generate_action_plan(ticket: TicketRequest):
     """
     Generate action plan based on ticket classification and retrieved SOPs.
-    
+
     This endpoint creates a step-by-step plan for resolving the ticket,
     including time estimates and approval requirements.
     """
