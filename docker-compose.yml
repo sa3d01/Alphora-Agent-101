@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # PostgreSQL with pgvector extension
+  postgres:
+    image: pgvector/pgvector:pg15
+    container_name: alphora-postgres
+    environment:
+      POSTGRES_DB: alphora_agent
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - alphora-network
+
+  # AI Service (Python FastAPI)
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: alphora-ai-service
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: alphora_agent
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      PYTHONUNBUFFERED: 1
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./ai-service:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - alphora-network
+
+  # Agent Orchestrator (Java Spring Boot)
+  agent-orchestrator:
+    build:
+      context: ./agent-orchestrator
+      dockerfile: Dockerfile
+    container_name: alphora-orchestrator
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      AI_SERVICE_URL: http://ai-service:8000
+    ports:
+      - "8080:8080"
+    depends_on:
+      - ai-service
+    networks:
+      - alphora-network
+
+volumes:
+  postgres_data:
+
+networks:
+  alphora-network:
+    driver: bridge
