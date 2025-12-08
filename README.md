@@ -1,36 +1,75 @@
-# Alphora Agent 101 — Mock MSP Support Agent
+# 🧠 Alphora Agent 101 — Minimal AI Support Agent (MVP)
 
-This repository contains a **small, self-contained demo** of an AI-powered MSP support agent
-for the *Alphora Agent 101* case study.
+This repository implements a minimal, clear, end-to-end prototype of an AI-powered L1/L2 support agent.  
+It demonstrates the core building blocks expected in the assignment:
 
-It is **not** a production system.  
-It is designed to **show my thinking** around:
+✔ Ticket classification  
+✔ Lightweight RAG system  
+✔ Simple retrieval mechanism  
+✔ Mock actions (tools)  
+✔ Full ticket → agent reasoning → action → reply simulation  
 
-- Ticket classification
-- RAG-based SOP retrieval
-- Agent-style action planning
-- Mock tool execution
-- Human-in-the-loop email drafting
+The goal is clarity, modularity, and extensibility — not production complexity.
 
 ---
 
-## 1. High-Level Architecture
+## 1. 🎯 Purpose of the MVP
 
-```mermaid
-flowchart LR
-    PSA[PSA / Ticket System] -->|webhook / polling| Ingest[Ticket Ingestion]
-    Ingest --> Classifier[Intent Classification]
-    Ingest --> Context[Client Context]
+This codebase shows how an autonomous support agent can:
 
-    Classifier --> RAG[RAG KB -SOPs, configs]
-    Context --> RAG
+1. Understand a ticket (classification)  
+2. Retrieve relevant SOPs (mini-RAG)  
+3. Plan the next steps  
+4. Execute mock actions  
+5. Respond back to the user  
 
-    RAG --> Planner[Action Planner]
-    Classifier --> Planner
+Everything is implemented with clean, minimal code to highlight architecture and reasoning.
 
-    Planner --> Tools[AI Tool Workbench]
-    Planner --> Email[Email Draft Generator]
+---
 
-    Tools --> Scribe[Alphora Scribe / Logging]
-    Email --> PSA
-    Tools --> PSA
+## 2. 🏛️ High-Level Architecture
+
+            ┌──────────────────┐
+            │   Ticket Input    │
+            └─────────┬────────┘
+                      │
+            ┌─────────▼─────────┐
+            │  Classification     │  (LLM + heuristics)
+            └─────────┬─────────┘
+                      │ category
+            ┌─────────▼─────────┐
+            │   RAG Retrieval    │ (vector search)
+            └─────────┬─────────┘
+                      │ SOP context
+            ┌─────────▼─────────┐
+            │  Agent Reasoning   │ (LLM + tool planner)
+            └─────────┬─────────┘
+                      │ actions
+            ┌─────────▼─────────┐
+            │   Mock Actions     │ (restart/reset/etc.)
+            └─────────┬─────────┘
+                      │ results
+            ┌─────────▼─────────┐
+            │ Final Agent Reply  │
+            └────────────────────┘
+
+This flow is reproduced in `src/simulator.py`.
+
+---
+
+
+## 3. ▶️ Running the Simulation
+
+### Install dependencies
+```bash
+pip install -r requirements.txt
+```
+### Ingest SOP documents into the vector DB
+```bash
+python rag/ingest.py
+```
+### Run the end-to-end flow
+```bash
+python -m src.simulator
+```
+You will be prompted to enter a ticket description.

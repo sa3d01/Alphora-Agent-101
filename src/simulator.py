@@ -1,105 +1,83 @@
-# src/simulator.py
+"""
+This script simulates an end-to-end support ticket flow:
 
-import json
-from pathlib import Path
+1. Read a ticket from user input
+2. Classify the issue (LLM + heuristics)
+3. Retrieve relevant SOPs from the RAG database
+4. Let the agent plan actions based on classification + SOPs
+5. Execute mock actions
+6. Generate final reply
 
-from .classifier import Ticket, RuleBasedClassifier
-from .rag import RAGKnowledgeBase
-from .actions import ToolExecutor
-from .agent import SupportAgent
-
-
-DATA_DIR = Path(__file__).resolve().parent.parent / "data"
-
-
-def load_tickets(path: str) -> list[Ticket]:
-    raw = json.loads(Path(path).read_text(encoding="utf-8"))
-    return [
-        Ticket(
-            id=item["id"],
-            client_id=item["client_id"],
-            subject=item["subject"],
-            description=item["description"],
-            priority=item.get("priority", "P3"),
-        )
-        for item in raw
-    ]
+As we build the system, each step will be replaced
+with real logic from the corresponding modules.
+"""
 
 
-def print_decision(agent: SupportAgent, idx: int, ticket: Ticket) -> None:
-    print("=" * 80)
-    print(f"🎫  Demo Ticket #{idx+1}: {ticket.id} ({ticket.client_id})")
-    print("-" * 80)
-    print(f"Subject   : {ticket.subject}")
-    print(f"Priority  : {ticket.priority}")
-    print(f"Desc      : {ticket.description}")
-    print()
+from src.models import Ticket
+from src.classification.classifier import HybridClassifier
+from rag.retriever import Retriever
+from src.agent.agent_core import SupportAgent
 
-    decision = agent.handle_ticket(ticket)
+def main():
 
-    # 6.2 show classification
-    print("🔎 Classification")
-    print(f"  Label      : {decision.classification.label}")
-    print(f"  Confidence : {decision.classification.confidence}")
-    for reason in decision.classification.reasons:
-        print(f"   - {reason}")
-    print()
+    print("\n--- Alphora Agent 101 Simulator ---")
+    user_input = input("Enter ticket description:\n> ").strip()
 
-    # 6.3 show RAG retrieval
-    print("📚 RAG Retrieval (top SOPs)")
-    if not decision.rag_results:
-        print("  No SOPs found.")
+    ticket = Ticket(text=user_input)
+
+    # ------------------------------
+    # Step 1: Classification
+    # ------------------------------
+    classifier = HybridClassifier()
+    classification = classifier.classify(ticket.text)
+
+    print("\n--- Classification ---")
+    print(f"Category: {classification.category} (confidence: {classification.confidence:.2f})")
+    print(f"Reason: {classification.reason}")
+
+    # ------------------------------
+    # Step 2: Retrieval (RAG)
+    # ------------------------------
+    retriever = Retriever()
+    retrieval = retriever.retrieve(ticket.text)
+
+    print("\n--- Retrieved SOPs ---")
+    if retrieval.doc_names:
+        for name in retrieval.doc_names:
+            print(f"• {name}")
     else:
-        for res in decision.rag_results:
-            print(f"  - {res.sop.title} [client={res.sop.client_id}] (score={res.score})")
-    print()
+        print("No SOPs found")
 
-    # 6.4 show action plan
-    print("🛠  Proposed Action Plan (tools/actions)")
-    if not decision.action_plan:
-        print("  No automated actions proposed (requires human triage).")
+    # ------------------------------
+    # Step 3: Agent Planning + Actions
+    # ------------------------------
+    agent = SupportAgent()
+    action_plan = agent.plan(classification, retrieval)
+
+    print("\n--- Planned Actions ---")
+    if not action_plan:
+        print("No actions needed.")
     else:
-        for step in decision.action_plan:
-            approval = "YES" if step.human_approval_required else "NO"
-            print(
-                f"  - {step.action_name} | human_approval_required={approval} | context={step.context}"
-            )
-    print()
+        for a in action_plan:
+            print(f"- {a}")
 
-    # 6.1 Email / reply template
-    print("✉️  Draft Email / Reply Template")
-    print("-" * 80)
-    print(decision.draft_reply)
-    print("-" * 80)
-    print()
+    # ------------------------------
+    # Step 4: Execute Actions
+    # ------------------------------
+    results = agent.execute_actions(action_plan)
 
-    # simulate executing actions (as if human approved)
-    if decision.action_plan:
-        print("⚙️  Simulated Tool Execution (assuming human approved)")
-        results = agent.execute_action_plan(decision)
-        for res in results:
-            print(f"  - {res.name}: success={res.success}, details={res.details}")
-        print()
+    print("\n--- Executed ---")
+    for result in results:
+        status = "✔" if result.success else "✖"
+        print(f"{status} {result.action_name} → {result.output}")
 
-    print(f"Requires human technician? {'YES' if decision.requires_human else 'NO'}")
-    print("=" * 80)
-    print("\n\n")
+    # ------------------------------
+    # Step 5: Final Reply
+    # ------------------------------
+    reply = agent.compose_reply(ticket, classification, results)
 
-
-def main() -> None:
-    tickets = load_tickets(str(DATA_DIR / "tickets.json"))
-    kb = RAGKnowledgeBase.from_file(str(DATA_DIR / "sops.json"))
-    classifier = RuleBasedClassifier()
-    tools = ToolExecutor()
-    agent = SupportAgent(kb=kb, classifier=classifier, tools=tools)
-
-    print("Alphora Agent 101 — Mock Demo")
-    print("Knowledge base stats:", kb.to_dict())
-    print("Available actions:", tools.list_actions())
-    print()
-
-    for idx, ticket in enumerate(tickets):
-        print_decision(agent, idx, ticket)
+    print("\n--- Agent Reply ---")
+    print(reply.message)
 
 
 if __name__ == "__main__":
