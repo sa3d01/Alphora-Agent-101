@@ -1,0 +1,12 @@
+# Core ML utilities for simple vector retrieval
+scikit-learn==1.3.2
+
+# Needed for the agent classifier (LLM optional fallback)
+openai>=1.0.0
+
+# Basic text processing (implicitly required by scikit-learn)
+numpy>=1.23.0
+scipy>=1.10.0
+
+# Ensures UTF-8 handling and general text utilities
+regex>=2023.3.23
